@@ -1,0 +1,128 @@
+diff --git a/app/presenters/instance_presenter.rb b/app/presenters/instance_presenter.rb
+index 4c1124d5..94304b59 100644
+--- a/app/presenters/instance_presenter.rb
++++ b/app/presenters/instance_presenter.rb
+@@ -28,6 +28,30 @@ class InstancePresenter
+     Rails.cache.fetch('distinct_domain_count') { Account.distinct.count(:domain) }
+   end
+ 
++  def active_user_count_30d
++    Rails.cache.fetch('active_user_count_30d') { User.confirmed.where('current_sign_in_at >= ?', 30.days.ago).count }
++  end
++
++  def active_user_count_14d
++    Rails.cache.fetch('active_user_count_14d') { User.confirmed.where('current_sign_in_at >= ?', 14.days.ago).count }
++  end
++
++  def active_user_count_7d
++    Rails.cache.fetch('active_user_count_7d') { User.confirmed.where('current_sign_in_at >= ?', 7.days.ago).count }
++  end
++
++  def active_user_count_1d
++    Rails.cache.fetch('active_user_count_1d') { User.confirmed.where('current_sign_in_at >= ?', 1.day.ago).count }
++  end
++
++  def active_user_count_1h
++    Rails.cache.fetch('active_user_count_1h') { User.confirmed.where('current_sign_in_at >= ?', 1.hour.ago).count }
++  end
++
++  def first_user_created_at
++    Rails.cache.fetch('first_user_created_at') { User.first.created_at }
++  end
++
+   def version_number
+     Mastodon::Version
+   end
+diff --git a/app/serializers/rest/instance_serializer.rb b/app/serializers/rest/instance_serializer.rb
+index 2898011f..d8b71f5b 100644
+--- a/app/serializers/rest/instance_serializer.rb
++++ b/app/serializers/rest/instance_serializer.rb
+@@ -1,3 +1,4 @@
++
+ # frozen_string_literal: true
+ 
+ class REST::InstanceSerializer < ActiveModel::Serializer
+@@ -35,6 +36,14 @@ class REST::InstanceSerializer < ActiveModel::Serializer
+       user_count: instance_presenter.user_count,
+       status_count: instance_presenter.status_count,
+       domain_count: instance_presenter.domain_count,
++      active_user_count: {
++        '30d': instance_presenter.active_user_count_30d,
++        '14d': instance_presenter.active_user_count_14d,
++        '7d': instance_presenter.active_user_count_7d,
++        '1d': instance_presenter.active_user_count_1d,
++        '1h': instance_presenter.active_user_count_1h,
++      },
++      first_user_created_at: instance_presenter.first_user_created_at,
+     }
+   end
+ 
+diff --git a/spec/presenters/instance_presenter_spec.rb b/spec/presenters/instance_presenter_spec.rb
+index 7c47aed6..faee9f4d 100644
+--- a/spec/presenters/instance_presenter_spec.rb
++++ b/spec/presenters/instance_presenter_spec.rb
+@@ -117,4 +117,64 @@ describe InstancePresenter do
+       expect(instance_presenter.domain_count).to eq(345)
+     end
+   end
++
++  describe "active_user_count_30d" do
++    it "returns the number of users which logged in the last 30 days" do
++      cache = double
++      allow(Rails).to receive(:cache).and_return(cache)
++      allow(cache).to receive(:fetch).with("active_user_count_30d").and_return(456)
++
++      expect(instance_presenter.active_user_count_30d).to eq(456)
++    end
++  end
++
++  describe "active_user_count_14d" do
++    it "returns the number of users which logged in the last 14 days" do
++      cache = double
++      allow(Rails).to receive(:cache).and_return(cache)
++      allow(cache).to receive(:fetch).with("active_user_count_14d").and_return(567)
++
++      expect(instance_presenter.active_user_count_14d).to eq(567)
++    end
++  end
++
++  describe "active_user_count_7d" do
++    it "returns the number of users which logged in the last 7 days" do
++      cache = double
++      allow(Rails).to receive(:cache).and_return(cache)
++      allow(cache).to receive(:fetch).with("active_user_count_7d").and_return(678)
++
++      expect(instance_presenter.active_user_count_7d).to eq(678)
++    end
++  end
++
++  describe "active_user_count_1d" do
++    it "returns the number of users which logged in the last day" do
++      cache = double
++      allow(Rails).to receive(:cache).and_return(cache)
++      allow(cache).to receive(:fetch).with("active_user_count_1d").and_return(789)
++
++      expect(instance_presenter.active_user_count_1d).to eq(789)
++    end
++  end
++
++  describe "active_user_count_1h" do
++    it "returns the number of users which logged in the last hour" do
++      cache = double
++      allow(Rails).to receive(:cache).and_return(cache)
++      allow(cache).to receive(:fetch).with("active_user_count_1h").and_return(1123)
++
++      expect(instance_presenter.active_user_count_1h).to eq(1123)
++    end
++  end
++
++  describe "first_user_created_at" do
++    it "returns the date the first user of the instance has been created" do
++      cache = double
++      allow(Rails).to receive(:cache).and_return(cache)
++      allow(cache).to receive(:fetch).with("first_user_created_at").and_return(Date.parse('01-01-2000 01:01:01'))
++
++      expect(instance_presenter.first_user_created_at).to eq(Date.parse('01-01-2000 01:01:01'))
++    end
++  end
+ end
